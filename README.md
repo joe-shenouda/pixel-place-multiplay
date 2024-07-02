@@ -1,6 +1,6 @@
 # Pixel Place Multiplay
 
-![Pixel Place Multiplay](https://i.postimg.cc/DwmXDFB0/Schermafbeelding-2024-07-02-023004.png)
+![Pixel Place Multiplay](https://i.postimg.cc/L4Tg8hWh/Schermafbeelding-2024-07-02-023245.png)
 
 Pixel Place Multiplay is a multiplayer web application where users can collaborate to create pixel art. This project demonstrates real-time updates and collaboration using modern web technologies.
 
