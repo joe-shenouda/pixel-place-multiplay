@@ -1,0 +1,449 @@
+<html><head><title>Multiplayer Pixel Art Board</title>
+<script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background-color: #DAE0E6;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background-color: #FF4500;
+    color: white;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+nav a {
+    color: white;
+    text-decoration: none;
+    margin-left: 20px;
+}
+
+main {
+    max-width: 1200px;
+    margin: 20px auto;
+    background-color: white;
+    border-radius: 5px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+}
+
+h1 {
+    color: #1A1A1B;
+}
+
+#canvas-container {
+    width: 500px;
+    height: 500px;
+    overflow: hidden;
+    border: 1px solid #ccc;
+    margin: 0 auto;
+    position: relative;
+    cursor: crosshair;
+}
+
+#canvas {
+    image-rendering: pixelated;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+#grid-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}
+
+#color-picker {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.color-option {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.1s;
+}
+
+.color-option:hover {
+    transform: scale(1.1);
+}
+
+.color-option.selected {
+    border-color: #000;
+    transform: scale(1.1);
+}
+
+#stats {
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-around;
+}
+
+.stat {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #FF4500;
+}
+
+#zoom-controls {
+    text-align: center;
+    margin-top: 10px;
+}
+
+button {
+    background-color: #FF4500;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    margin: 0 5px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: #FF6A33;
+}
+
+@keyframes pixel-place {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+#hover-pixel {
+    position: absolute;
+    pointer-events: none;
+    border: 1px solid rgba(0, 0, 0, 0.5);
+    box-sizing: border-box;
+}
+
+#loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    z-index: 1000;
+}
+</style>
+</head>
+<body>
+<div id="loading">Loading pixels...</div>
+<header>
+    <div class="logo">r/place</div>
+    <nav>
+        <a href="https://reddit.com/r/place/about">About</a>
+        <a href="https://reddit.com/r/place/faq">FAQ</a>
+        <a href="https://reddit.com/r/place/archive">Archive</a>
+    </nav>
+</header>
+
+<main>
+    <h1>Welcome to Enhanced Collaborative r/place</h1>
+    <p>Place tiles on the canvas freely without any cooldown! Use the zoom controls to navigate the canvas and create your pixel art masterpiece. The grid overlay helps you see where to place pixels. Your changes will be visible to all users in real-time!</p>
+
+    <div id="color-picker">
+        <div class="color-option selected" style="background-color: #FF4500;"></div>
+        <div class="color-option" style="background-color: #FFA800;"></div>
+        <div class="color-option" style="background-color: #FFD635;"></div>
+        <div class="color-option" style="background-color: #00A368;"></div>
+        <div class="color-option" style="background-color: #7EED56;"></div>
+        <div class="color-option" style="background-color: #2450A4;"></div>
+        <div class="color-option" style="background-color: #3690EA;"></div>
+        <div class="color-option" style="background-color: #51E9F4;"></div>
+        <div class="color-option" style="background-color: #811E9F;"></div>
+        <div class="color-option" style="background-color: #B44AC0;"></div>
+        <div class="color-option" style="background-color: #FF99AA;"></div>
+        <div class="color-option" style="background-color: #9C6926;"></div>
+        <div class="color-option" style="background-color: #000000;"></div>
+        <div class="color-option" style="background-color: #898D90;"></div>
+        <div class="color-option" style="background-color: #D4D7D9;"></div>
+        <div class="color-option" style="background-color: #FFFFFF;"></div>
+    </div>
+
+    <div id="canvas-container">
+        <canvas id="canvas" width="1000" height="1000"></canvas>
+        <canvas id="grid-overlay" width="1000" height="1000"></canvas>
+        <div id="hover-pixel"></div>
+    </div>
+
+    <div id="zoom-controls">
+        <button id="zoom-in">Zoom In</button>
+        <button id="zoom-out">Zoom Out</button>
+        <button id="reset-view">Reset View</button>
+    </div>
+
+    <div id="stats">
+        <div class="stat">
+            <div class="stat-value" id="tiles-placed">0</div>
+            <div class="stat-label">Tiles Placed</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value" id="users-online">1</div>
+            <div class="stat-label">Users Online</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value" id="time-remaining">∞</div>
+            <div class="stat-label">Time Remaining</div>
+        </div>
+    </div>
+</main>
+
+<script>
+// Initialize GUN database connection
+const gun = Gun(['https://gun-manhattan.herokuapp.com/gun']);
+const pixelsRef = gun.get('websim-rplace-pixels-5');
+const tilesPlacedRef = gun.get('websim-rplace-tiles-placed');
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const gridOverlay = document.getElementById('grid-overlay');
+const gridCtx = gridOverlay.getContext('2d');
+const container = document.getElementById('canvas-container');
+const hoverPixel = document.getElementById('hover-pixel');
+let selectedColor = '#FF4500';
+let scale = 1;
+let panX = 0;
+let panY = 0;
+let tilesPlaced = 0;
+const GRID_SIZE = 10;
+
+const seenPixels = new Set();
+const offscreenCanvas = document.createElement('canvas');
+offscreenCanvas.width = 1000;
+offscreenCanvas.height = 1000;
+const offscreenCtx = offscreenCanvas.getContext('2d');
+offscreenCtx.fillStyle = 'white';
+offscreenCtx.fillRect(0, 0, 1000, 1000);
+
+document.querySelectorAll('.color-option').forEach(option => {
+    option.addEventListener('click', function() {
+        document.querySelector('.color-option.selected').classList.remove('selected');
+        this.classList.add('selected');
+        selectedColor = this.style.backgroundColor;
+        hoverPixel.style.backgroundColor = selectedColor;
+    });
+});
+
+function setTransform() {
+    ctx.setTransform(scale, 0, 0, scale, panX, panY);
+    gridCtx.setTransform(scale, 0, 0, scale, panX, panY);
+}
+
+function draw() {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+    ctx.drawImage(offscreenCanvas, 0, 0);
+    drawGrid();
+}
+
+function drawGrid() {
+    gridCtx.save();
+    gridCtx.setTransform(1, 0, 0, 1, 0, 0);
+    gridCtx.clearRect(0, 0, gridOverlay.width, gridOverlay.height);
+    gridCtx.restore();
+    gridCtx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+    gridCtx.lineWidth = 0.5 / scale;
+
+    for (let x = 0; x <= 1000; x += GRID_SIZE) {
+        gridCtx.beginPath();
+        gridCtx.moveTo(x, 0);
+        gridCtx.lineTo(x, 1000);
+        gridCtx.stroke();
+    }
+
+    for (let y = 0; y <= 1000; y += GRID_SIZE) {
+        gridCtx.beginPath();
+        gridCtx.moveTo(0, y);
+        gridCtx.lineTo(1000, y);
+        gridCtx.stroke();
+    }
+}
+
+document.getElementById('zoom-in').addEventListener('click', () => {
+    scale *= 1.1;
+    setTransform();
+    draw();
+});
+
+document.getElementById('zoom-out').addEventListener('click', () => {
+    scale /= 1.1;
+    setTransform();
+    draw();
+});
+
+document.getElementById('reset-view').addEventListener('click', () => {
+    scale = 1;
+    panX = 0;
+    panY = 0;
+    setTransform();
+    draw();
+});
+
+let isDragging = false;
+let lastX, lastY;
+
+container.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    lastX = e.offsetX;
+    lastY = e.offsetY;
+});
+
+container.addEventListener('mousemove', (e) => {
+    if (isDragging) {
+        panX += e.offsetX - lastX;
+        panY += e.offsetY - lastY;
+        lastX = e.offsetX;
+        lastY = e.offsetY;
+        setTransform();
+        draw();
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.floor((e.clientX - rect.left - panX) / scale / GRID_SIZE) * GRID_SIZE;
+    const y = Math.floor((e.clientY - rect.top - panY) / scale / GRID_SIZE) * GRID_SIZE;
+
+    hoverPixel.style.left = `${x * scale + panX}px`;
+    hoverPixel.style.top = `${y * scale + panY}px`;
+    hoverPixel.style.width = `${GRID_SIZE * scale}px`;
+    hoverPixel.style.height = `${GRID_SIZE * scale}px`;
+});
+
+container.addEventListener('mouseup', () => {
+    isDragging = false;
+});
+
+container.addEventListener('mouseleave', () => {
+    hoverPixel.style.display = 'none';
+});
+
+container.addEventListener('mouseenter', () => {
+    hoverPixel.style.display = 'block';
+});
+
+function updatePixel(x, y, color) {
+    offscreenCtx.fillStyle = color;
+    offscreenCtx.fillRect(x, y, GRID_SIZE, GRID_SIZE);
+    draw();
+}
+
+function placePixel(x, y, color) {
+    const pixelKey = `${x},${y}`;
+    const pixelData = { color: color, timestamp: Gun.state() };   
+    pixelsRef.get(pixelKey).put(pixelData);
+    
+    tilesPlacedRef.get('count').once((count) => {
+        tilesPlaced = (count || 0) + 1;
+        tilesPlacedRef.put({ count: tilesPlaced });
+        document.getElementById('tiles-placed').textContent = tilesPlaced;
+    });
+}
+
+canvas.addEventListener('click', function(event) {
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.floor((event.clientX - rect.left - panX) / scale / GRID_SIZE) * GRID_SIZE;
+    const y = Math.floor((event.clientY - rect.top - panY) / scale / GRID_SIZE) * GRID_SIZE;
+    
+    placePixel(x, y, selectedColor);
+    updatePixel(x, y, selectedColor);
+    
+    const pixel = document.createElement('div');
+    pixel.style.position = 'absolute';
+    pixel.style.left = `${x * scale + panX}px`;
+    pixel.style.top = `${y * scale + panY}px`;
+    pixel.style.width = `${GRID_SIZE * scale}px`;
+    pixel.style.height = `${GRID_SIZE * scale}px`;
+    pixel.style.backgroundColor = selectedColor;
+    pixel.style.animation = 'pixel-place 0.3s forwards';
+    container.appendChild(pixel);
+    setTimeout(() => pixel.remove(), 300);
+});
+
+function populateExistingTilesCount() {
+    return new Promise((resolve) => {
+        tilesPlacedRef.get('count').once((count) => {
+            tilesPlaced = count || 0;
+            document.getElementById('tiles-placed').textContent = tilesPlaced;
+            resolve();
+        });
+    });
+}
+
+function populateExistingPixels() {
+    return new Promise((resolve) => {
+        pixelsRef.map().once((data, key) => {
+            if (data) {
+                const [x, y] = key.split(',').map(Number);
+                updatePixel(x, y, data.color);
+                seenPixels.add(key);
+            }
+        });
+
+        setTimeout(() => {
+            resolve();
+        }, 2000);
+    });
+}
+
+function listenForUpdates() {
+    pixelsRef.map().on(function(data, key) {
+        if (data && !seenPixels.has(key)) {
+            const [x, y] = key.split(',').map(Number);
+            updatePixel(x, y, data.color);
+            tilesPlaced++;
+            document.getElementById('tiles-placed').textContent = tilesPlaced;
+            seenPixels.add(key);
+        }
+    });
+}
+
+async function initializeCanvas() {
+    document.getElementById('loading').style.display = 'block';
+    await populateExistingPixels();
+    await populateExistingTilesCount();
+    listenForUpdates();
+    document.getElementById('loading').style.display = 'none';
+    draw();
+}
+
+setInterval(() => {
+    const usersOnline = Math.floor(Math.random() * 1000) + 1;
+    document.getElementById('users-online').textContent = usersOnline;
+}, 5000);
+
+hoverPixel.style.backgroundColor = selectedColor;
+hoverPixel.style.opacity = '0.5';
+
+initializeCanvas();
+</script>
+</body></html>
