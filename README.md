@@ -14,6 +14,7 @@ Check out the live demo: [Pixel Place Multiplay](https://joe-shenouda.github.io/
   - [Prerequisites](#prerequisites)
   - [Running Locally](#running-locally)
 - [Usage](#usage)
+- [Real-Time Data Synchronization](#real-time-data-synchronization)
 - [Contributing](#contributing)
 - [License](#license)
 - [Acknowledgements](#acknowledgements)
@@ -33,6 +34,7 @@ Check out the live demo: [Pixel Place Multiplay](https://joe-shenouda.github.io/
 - WebSockets for real-time communication
 - Node.js (for server)
 - Express.js (for server framework)
+- GUN for decentralized real-time database
 
 ## Getting Started
 
@@ -65,6 +67,25 @@ Check out the live demo: [Pixel Place Multiplay](https://joe-shenouda.github.io/
 - Use the interactive grid to draw pixel art.
 - Collaborate with other users in real-time.
 - Choose different colors from the palette to create your artwork.
+
+## Real-Time Data Synchronization
+Pixel Place Multiplay uses [GUN](https://gun.eco/), a decentralized database, to enable real-time data synchronization. GUN allows data to be distributed across multiple nodes, creating a peer-to-peer network. In this project, we connect to a GUN relay server hosted at `https://gun-manhattan.herokuapp.com/gun`. This setup ensures that pixel updates are instantly synchronized across all connected users, providing a seamless collaborative experience. You can also set up and host your own GUN nodes if you prefer to manage your own data.
+
+```javascript
+const gun = Gun(['https://gun-manhattan.herokuapp.com/gun']);
+const pixelsRef = gun.get('websim-rplace-pixels-5');
+const tilesPlacedRef = gun.get('websim-rplace-tiles-placed');
+
+pixelsRef.map().on(function(data, key) {
+    if (data && !seenPixels.has(key)) {
+        const [x, y] = key.split(',').map(Number);
+        updatePixel(x, y, data.color);
+        tilesPlaced++;
+        document.getElementById('tiles-placed').textContent = tilesPlaced;
+        seenPixels.add(key);
+    }
+});
+```
 
 ## Contributing
 Contributions are welcome! Follow these steps to contribute:
